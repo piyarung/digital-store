@@ -18,6 +18,14 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMessage('');
 
+    // 🌟 ตรวจสอบสิทธิ์ Admin (admin@gmail.com / admin123456)
+    if (email === 'admin@gmail.com' && password === 'admin123456') {
+      sessionStorage.setItem('is_admin', 'true');
+      sessionStorage.setItem('admin_email', 'admin@gmail.com');
+      router.push('/admin');
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
