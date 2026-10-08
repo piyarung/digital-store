@@ -2,30 +2,40 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/lib/supabase';
 import { Trash2, ShoppingBag, ArrowLeft, CreditCard, Loader2, XCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function CartPage() {
   const { cart, removeFromCart, totalPrice, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  // 🌟 State สำหรับ Custom Popup แจ้งเตือนข้อผิดพลาด
   const [popup, setPopup] = useState({ show: false, title: '', message: '' });
 
   const handleCheckout = async () => {
     setLoading(true);
     try {
+      // 1. ตรวจสอบสถานะล็อกอินก่อนไปจ่ายเงิน
       const { data: { user } } = await supabase.auth.getUser();
 
+      if (!user) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+        router.push('/login');
+        return;
+      }
+
+      // 2. ดำเนินการไปหน้าจ่ายเงินตามปกติ
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cart,
-          userId: user?.id || null,
-          userEmail: user?.email || '',
+          userId: user.id,
+          userEmail: user.email,
         }),
       });
 
@@ -34,7 +44,6 @@ export default function CartPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        // 🌟 เปลี่ยนจาก alert() เป็น Custom Popup
         setPopup({
           show: true,
           title: 'เกิดข้อผิดพลาด',
@@ -43,7 +52,6 @@ export default function CartPage() {
       }
     } catch (error) {
       console.error(error);
-      // 🌟 เปลี่ยนจาก alert() เป็น Custom Popup
       setPopup({
         show: true,
         title: 'ข้อผิดพลาดเครือข่าย',
@@ -172,7 +180,6 @@ export default function CartPage() {
         )}
       </main>
 
-      {/* 🌟 Custom Error Popup (แสดงผลเมื่อ popup.show เป็น true) */}
       {popup.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div 
@@ -181,18 +188,15 @@ export default function CartPage() {
           />
           <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 w-full max-w-sm shadow-2xl transform transition-all">
             <div className="flex flex-col items-center text-center">
-              
               <div className="w-16 h-16 rounded-full flex items-center justify-center mb-5 shadow-inner bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400">
                 <XCircle className="w-8 h-8" />
               </div>
-
               <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
                 {popup.title}
               </h3>
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
                 {popup.message}
               </p>
-
               <button
                 onClick={() => setPopup({ ...popup, show: false })}
                 className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-2xl transition-colors text-sm"
