@@ -145,6 +145,18 @@ export default function AdminPage() {
       'ยืนยันการลบสินค้า',
       `คุณต้องการลบสินค้า "${productTitle}" ใช่หรือไม่? (ไม่สามารถกู้คืนได้)`,
       async () => {
+        // 1. ลบรายการประวัติคำสั่งซื้อที่อ้างอิงถึงสินค้านี้ก่อน เพื่อแก้ปัญหา Foreign Key Constraint
+        const { error: orderItemsError } = await supabase
+          .from('order_items')
+          .delete()
+          .eq('product_id', id);
+
+        if (orderItemsError) {
+          showPopup('error', 'ลบไม่สำเร็จ', 'ไม่สามารถลบประวัติที่เชื่อมโยงกับสินค้านี้ได้: ' + orderItemsError.message);
+          return;
+        }
+
+        // 2. ลบสินค้าออกจากตาราง products
         const { error } = await supabase.from('products').delete().eq('id', id);
         if (error) {
           showPopup('error', 'ลบไม่สำเร็จ', error.message);
